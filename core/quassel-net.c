@@ -119,7 +119,7 @@ static const char *get_nick_flags(SERVER_REC *server) {
 
 // IRSSI_ABI_VERSION was introduced in 0.8.18
 #if !defined(IRSSI_ABI_VERSION) || IRSSI_ABI_VERSION < 6
-#  define use_tls use_ssl
+#  define use_tls use_tls
 #endif
 static SERVER_REC* quassel_server_init_connect(SERVER_CONNECT_REC* conn) {
 	Quassel_SERVER_CONNECT_REC *r = (Quassel_SERVER_CONNECT_REC*) conn;
@@ -165,21 +165,21 @@ void quassel_net_init(CHAT_PROTOCOL_REC* rec) {
 	signal_add_first("server connected", (SIGNAL_FUNC) sig_connected);
 }
 
-GIOChannel *irssi_ssl_get_iochannel(GIOChannel *handle, int port, SERVER_REC *server);
+GIOChannel *irssi_tls_get_iochannel(GIOChannel *handle, int port, SERVER_REC *server);
 void quassel_irssi_init_ack(void *arg) {
 	Quassel_SERVER_REC *server = (Quassel_SERVER_REC*)arg;
 	if(!server->ssl)
 		goto login;
-	GIOChannel* ssl_handle = irssi_ssl_get_iochannel(server->handle->handle, 1337, SERVER(server));
+	GIOChannel* tls_handle = irssi_tls_get_iochannel(server->handle->handle, 1337, SERVER(server));
 	int error;
 	//That's polling, and that's really bad...
-	while( (error=irssi_ssl_handshake(ssl_handle)) & 1) {
+	while( (error=irssi_tls_handshake(tls_handle)) & 1) {
 		if(error==-1) {
 			signal_emit("server connect failed", 2, server, "SSL Handshake failed");
 			return;
 		}
 	}
-	server->handle->handle = ssl_handle;
+	server->handle->handle = tls_handle;
 
 login:
 	quassel_login(server->handle->handle, server->connrec->nick, server->connrec->password);

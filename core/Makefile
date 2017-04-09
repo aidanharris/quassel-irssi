@@ -28,7 +28,7 @@ else
     LDFLAGS += -lquasselc
 endif
 
-CFLAGS=-std=gnu11 -Wall -Wextra -Werror -g -O2 $(IRSSI_CFLAGS) $(QUASSELC_FLAGS) -Wmissing-prototypes -Wmissing-declarations
+CFLAGS=-std=gnu11 -Wall -Wextra -g -O2 $(IRSSI_CFLAGS) $(QUASSELC_FLAGS) -Wmissing-prototypes -Wmissing-declarations
 
 CFLAGS += $(SSL_CFLAGS)
 LDFLAGS+= $(SSL_LDLAGS)
@@ -49,7 +49,7 @@ irssi/network-openssl.o: CFLAGS:=$(IRSSI_CFLAGS)
 quasselc-connector.o: CFLAGS:=$(CFLAGS)
 
 $(TARGET): $(OBJECTS)
-	gcc -shared $^ -o $@ -lz $(LDFLAGS)
+	gcc-5 -shared $^ -o $@ -lz $(LDFLAGS)
 
 install: $(TARGET)
 	$(INSTALL) -d $(IRSSI_LIB)/modules

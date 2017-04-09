@@ -17,6 +17,8 @@ Then:
 
     git clone --recursive https://github.com/phhusson/quassel-irssi.git
     cd quassel-irssi/core
+    grep -R -l ssl_ | xargs sed -i 's/ssl_/tls_/g' {}
+    grep -R -l _ssl | xargs -I '{}' sed -i 's/_ssl/_tls/g' {}
     make user_install
 
 How to use

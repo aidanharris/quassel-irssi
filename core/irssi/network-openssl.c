@@ -50,9 +50,9 @@ typedef struct
 	int port;
 } GIOSSLChannel;
 
-static int ssl_inited = FALSE;
+static int tls_inited = FALSE;
 
-static void irssi_ssl_free(GIOChannel *handle)
+static void irssi_tls_free(GIOChannel *handle)
 {
 	GIOSSLChannel *chan = (GIOSSLChannel *)handle;
 	g_io_channel_unref(chan->giochan);
@@ -149,7 +149,7 @@ static gboolean match_hostname(const char *cert_hostname, const char *hostname)
 }
 
 /* based on verify_extract_name from tls_client.c in postfix */
-static gboolean irssi_ssl_verify_hostname(X509 *cert, const char *hostname)
+static gboolean irssi_tls_verify_hostname(X509 *cert, const char *hostname)
 {
 	int gen_index, gen_count;
 	gboolean matched = FALSE, has_dns_name = FALSE;
@@ -203,7 +203,7 @@ static gboolean irssi_ssl_verify_hostname(X509 *cert, const char *hostname)
 	return matched;
 }
 
-static gboolean irssi_ssl_verify(SSL *ssl, SSL_CTX *ctx, const char* hostname, int port, X509 *cert, SERVER_REC *server)
+static gboolean irssi_tls_verify(SSL *ssl, SSL_CTX *ctx, const char* hostname, int port, X509 *cert, SERVER_REC *server)
 {
 	long result;
 #ifdef HAVE_DANE
@@ -276,13 +276,13 @@ static gboolean irssi_ssl_verify(SSL *ssl, SSL_CTX *ctx, const char* hostname, i
 			}
 		}
 		return FALSE;
-	} else if (! irssi_ssl_verify_hostname(cert, hostname)){
+	} else if (! irssi_tls_verify_hostname(cert, hostname)){
 		return FALSE;
 	}
 	return TRUE;
 }
 
-static GIOStatus irssi_ssl_read(GIOChannel *handle, gchar *buf, gsize len, gsize *ret, GError **gerr)
+static GIOStatus irssi_tls_read(GIOChannel *handle, gchar *buf, gsize len, gsize *ret, GError **gerr)
 {
 	GIOSSLChannel *chan = (GIOSSLChannel *)handle;
 	gint ret1, err;
@@ -327,7 +327,7 @@ static GIOStatus irssi_ssl_read(GIOChannel *handle, gchar *buf, gsize len, gsize
 	return G_IO_STATUS_ERROR;
 }
 
-static GIOStatus irssi_ssl_write(GIOChannel *handle, const gchar *buf, gsize len, gsize *ret, GError **gerr)
+static GIOStatus irssi_tls_write(GIOChannel *handle, const gchar *buf, gsize len, gsize *ret, GError **gerr)
 {
 	GIOSSLChannel *chan = (GIOSSLChannel *)handle;
 	gint ret1, err;
@@ -372,64 +372,64 @@ static GIOStatus irssi_ssl_write(GIOChannel *handle, const gchar *buf, gsize len
 	return G_IO_STATUS_ERROR;
 }
 
-static GIOStatus irssi_ssl_seek(GIOChannel *handle, gint64 offset, GSeekType type, GError **gerr)
+static GIOStatus irssi_tls_seek(GIOChannel *handle, gint64 offset, GSeekType type, GError **gerr)
 {
 	GIOSSLChannel *chan = (GIOSSLChannel *)handle;
 
 	return chan->giochan->funcs->io_seek(handle, offset, type, gerr);
 }
 
-static GIOStatus irssi_ssl_close(GIOChannel *handle, GError **gerr)
+static GIOStatus irssi_tls_close(GIOChannel *handle, GError **gerr)
 {
 	GIOSSLChannel *chan = (GIOSSLChannel *)handle;
 
 	return chan->giochan->funcs->io_close(handle, gerr);
 }
 
-static GSource *irssi_ssl_create_watch(GIOChannel *handle, GIOCondition cond)
+static GSource *irssi_tls_create_watch(GIOChannel *handle, GIOCondition cond)
 {
 	GIOSSLChannel *chan = (GIOSSLChannel *)handle;
 
 	return chan->giochan->funcs->io_create_watch(handle, cond);
 }
 
-static GIOStatus irssi_ssl_set_flags(GIOChannel *handle, GIOFlags flags, GError **gerr)
+static GIOStatus irssi_tls_set_flags(GIOChannel *handle, GIOFlags flags, GError **gerr)
 {
     GIOSSLChannel *chan = (GIOSSLChannel *)handle;
 
     return chan->giochan->funcs->io_set_flags(handle, flags, gerr);
 }
 
-static GIOFlags irssi_ssl_get_flags(GIOChannel *handle)
+static GIOFlags irssi_tls_get_flags(GIOChannel *handle)
 {
     GIOSSLChannel *chan = (GIOSSLChannel *)handle;
 
     return chan->giochan->funcs->io_get_flags(handle);
 }
 
-static GIOFuncs irssi_ssl_channel_funcs = {
-    irssi_ssl_read,
-    irssi_ssl_write,
-    irssi_ssl_seek,
-    irssi_ssl_close,
-    irssi_ssl_create_watch,
-    irssi_ssl_free,
-    irssi_ssl_set_flags,
-    irssi_ssl_get_flags
+static GIOFuncs irssi_tls_channel_funcs = {
+    irssi_tls_read,
+    irssi_tls_write,
+    irssi_tls_seek,
+    irssi_tls_close,
+    irssi_tls_create_watch,
+    irssi_tls_free,
+    irssi_tls_set_flags,
+    irssi_tls_get_flags
 };
 
-static gboolean irssi_ssl_init(void)
+static gboolean irssi_tls_init(void)
 {
 	SSL_library_init();
 	SSL_load_error_strings();
 	OpenSSL_add_all_algorithms();
-	ssl_inited = TRUE;
+	tls_inited = TRUE;
 
 	return TRUE;
 
 }
 
-GIOChannel *irssi_ssl_get_iochannel(GIOChannel *handle, int port, SERVER_REC *server)
+GIOChannel *irssi_tls_get_iochannel(GIOChannel *handle, int port, SERVER_REC *server)
 {
 	GIOSSLChannel *chan;
 	GIOChannel *gchan;
@@ -437,15 +437,15 @@ GIOChannel *irssi_ssl_get_iochannel(GIOChannel *handle, int port, SERVER_REC *se
 	SSL *ssl;
 	SSL_CTX *ctx = NULL;
 
-	const char *mycert = server->connrec->ssl_cert;
-	const char *mypkey = server->connrec->ssl_pkey;
-	const char *cafile = server->connrec->ssl_cafile;
-	const char *capath = server->connrec->ssl_capath;
-	gboolean verify = server->connrec->ssl_verify;
+	const char *mycert = server->connrec->tls_cert;
+	const char *mypkey = server->connrec->tls_pkey;
+	const char *cafile = server->connrec->tls_cafile;
+	const char *capath = server->connrec->tls_capath;
+	gboolean verify = server->connrec->tls_verify;
 
 	g_return_val_if_fail(handle != NULL, NULL);
 
-	if(!ssl_inited && !irssi_ssl_init())
+	if(!tls_inited && !irssi_tls_init())
 		return NULL;
 
 	if(!(fd = g_io_channel_unix_get_fd(handle)))
@@ -523,7 +523,7 @@ GIOChannel *irssi_ssl_get_iochannel(GIOChannel *handle, int port, SERVER_REC *se
 	chan->verify = verify;
 
 	gchan = (GIOChannel *)chan;
-	gchan->funcs = &irssi_ssl_channel_funcs;
+	gchan->funcs = &irssi_tls_channel_funcs;
 	g_io_channel_init(gchan);
 	gchan->is_readable = gchan->is_writeable = TRUE;
 	gchan->use_buffer = FALSE;
@@ -531,7 +531,7 @@ GIOChannel *irssi_ssl_get_iochannel(GIOChannel *handle, int port, SERVER_REC *se
 	return gchan;
 }
 
-int irssi_ssl_handshake(GIOChannel *handle)
+int irssi_tls_handshake(GIOChannel *handle)
 {
 	GIOSSLChannel *chan = (GIOSSLChannel *)handle;
 	int ret, err;
@@ -567,14 +567,14 @@ int irssi_ssl_handshake(GIOChannel *handle)
 		g_warning("SSL server supplied no certificate");
 		return -1;
 	}
-	ret = !chan->verify || irssi_ssl_verify(chan->ssl, chan->ctx, chan->server->connrec->address, chan->port, cert, chan->server);
+	ret = !chan->verify || irssi_tls_verify(chan->ssl, chan->ctx, chan->server->connrec->address, chan->port, cert, chan->server);
 	X509_free(cert);
 	return ret ? 0 : -1;
 }
 
 #else /* HAVE_OPENSSL */
 
-GIOChannel *net_connect_ip_ssl(IPADDR *ip, int port, IPADDR *my_ip, SERVER_REC *server)
+GIOChannel *net_connect_ip_tls(IPADDR *ip, int port, IPADDR *my_ip, SERVER_REC *server)
 {
 	g_warning("Connection failed: SSL support not enabled in this build.");
 	errno = ENOSYS;
